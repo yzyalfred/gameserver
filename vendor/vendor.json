@@ -1,0 +1,55 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "uomsdmqd20Jyc08s/iKpEqxDg+0=",
+			"path": "go.uber.org/atomic",
+			"revision": "9c79392530c3be3273bd71db21239f2a5146c10c",
+			"revisionTime": "2021-02-02T22:19:09Z"
+		},
+		{
+			"checksumSHA1": "RWfMpjnfIJZDIUe2DbU0VjMoZ1E=",
+			"path": "go.uber.org/multierr",
+			"revision": "e015acf18bb3a0d1bec970702b9cd997e2031781",
+			"revisionTime": "2020-11-24T18:20:17Z"
+		},
+		{
+			"checksumSHA1": "DAFNNAM/B5lGTkqtdssHD1N46x4=",
+			"path": "go.uber.org/zap",
+			"revision": "7b21229fb3f063275f4f169f8a79ad30aa001c51",
+			"revisionTime": "2021-04-20T21:53:04Z"
+		},
+		{
+			"checksumSHA1": "+Hu6xfDPjUTSgJf99/DFeXFOx8w=",
+			"path": "go.uber.org/zap/buffer",
+			"revision": "7b21229fb3f063275f4f169f8a79ad30aa001c51",
+			"revisionTime": "2021-04-20T21:53:04Z"
+		},
+		{
+			"checksumSHA1": "Y0uE8U8wxuPku0bFZyVmYLznd/o=",
+			"path": "go.uber.org/zap/internal/bufferpool",
+			"revision": "7b21229fb3f063275f4f169f8a79ad30aa001c51",
+			"revisionTime": "2021-04-20T21:53:04Z"
+		},
+		{
+			"checksumSHA1": "AA/i5mzFuQBeFcE+d9ZBLPropjU=",
+			"path": "go.uber.org/zap/internal/color",
+			"revision": "7b21229fb3f063275f4f169f8a79ad30aa001c51",
+			"revisionTime": "2021-04-20T21:53:04Z"
+		},
+		{
+			"checksumSHA1": "fjEB1pcePOWjEmayG54E92JYgWk=",
+			"path": "go.uber.org/zap/internal/exit",
+			"revision": "7b21229fb3f063275f4f169f8a79ad30aa001c51",
+			"revisionTime": "2021-04-20T21:53:04Z"
+		},
+		{
+			"checksumSHA1": "yhElE3Cv6IHDKfS+bn8qPpaF2UE=",
+			"path": "go.uber.org/zap/zapcore",
+			"revision": "7b21229fb3f063275f4f169f8a79ad30aa001c51",
+			"revisionTime": "2021-04-20T21:53:04Z"
+		}
+	],
+	"rootPath": "gameserver"
+}
