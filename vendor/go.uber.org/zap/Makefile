@@ -7,7 +7,7 @@ BENCH_FLAGS ?= -cpuprofile=cpu.pprof -memprofile=mem.pprof -benchmem
 # Directories containing independent Go modules.
 #
 # We track coverage only for the main module.
-MODULE_DIRS = . ./benchmarks ./zapgrpc/internal/test
+MODULE_DIRS = . ./benchmarks
 
 # Many Go tools take file globs or directories as arguments instead of packages.
 GO_FILES := $(shell \
@@ -35,10 +35,10 @@ lint: $(GOLINT) $(STATICCHECK)
 	@[ ! -s lint.log ]
 
 $(GOLINT):
-	cd tools && go install golang.org/x/lint/golint
+	go install golang.org/x/lint/golint
 
 $(STATICCHECK):
-	cd tools && go install honnef.co/go/tools/cmd/staticcheck
+	go install honnef.co/go/tools/cmd/staticcheck
 
 .PHONY: test
 test:
