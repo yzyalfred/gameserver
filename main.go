@@ -1,9 +1,25 @@
 package main
 
-import "gameserver/core/log"
+import (
+	"gameserver/core/log"
+)
+
+func test1() {
+	test2()
+}
+
+
+func test2() {
+	test3()
+}
+
+func test3() {
+	log.Error("test mul error for log")
+}
 
 func main()  {
-	log.InitLog("../log", "info", "debug", "error")
-	log.Debug("test debug -------------> %s", "hello")
-	log.Info("test info----------->")
+	log.InitLog("../log", "info", true, 0)
+	log.Info("test info for log")
+	log.Error("test error for log")
+	test3()
 }

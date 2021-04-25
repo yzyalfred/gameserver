@@ -2,47 +2,83 @@ package log
 
 import (
 	"fmt"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	"gameserver/core/utils"
+	"log"
 	"os"
 	"strings"
 	"time"
 )
 
+// levels
+const (
+	debugLevel = iota
+	infoLevel
+	warnLevel
+	errorLevel
+	fatalLevel
+)
+
+const (
+	debugLevelString = "[DEBUG] "
+	infoLevelString  = "[INFO ] "
+	warnLevelString  = "[WARN] "
+	errorLevelString = "[ERROR] "
+	fatalLevelString = "[FATAL] "
+)
+
 var gLogger *Logger
 
 type Logger struct {
-	// origin logger by zap
-	baseLogger *zap.Logger
-	baseSugar  *zap.SugaredLogger
+	fileLogger *log.Logger
+	stdLogger  *log.Logger
 
 	filePath string
-	logTime time.Time
+	file     *os.File
 
-	fileLevel       zapcore.Level
-	consoleLevel    zapcore.Level
-	stackTraceLevel zapcore.Level
+	logTime time.Time
+	flag    int
+	level   int
 }
 
-func InitLog(fp string, fl string, cl string, stl string) {
-	gLogger = &Logger{
-		filePath: fp,
-		fileLevel: parseLevel(fl),
-		consoleLevel: parseLevel(cl),
-		stackTraceLevel: parseLevel(stl),
+func InitLog(filePath string, level string, std bool, flag int) {
+	if flag == 0 {
+		flag = log.LstdFlags | log.Lshortfile
 	}
 
-	gLogger.Reset()
+	gLogger = &Logger{
+		filePath: filePath,
+		level:    parseLevel(level),
+		logTime:  time.Now(),
+		flag:     flag,
+	}
+
+	file, err := OpenOrCreateFile(gLogger.filePath)
+	if err != nil {
+		fmt.Println("file to new logger", err)
+		return
+	}
+
+	gLogger.fileLogger = log.New(file, "", gLogger.flag)
+	gLogger.file = file
+	if std {
+		gLogger.stdLogger = log.New(os.Stdout, "", gLogger.flag)
+	}
 }
 
-func parseLevel(s string) zapcore.Level {
+func parseLevel(s string) int {
 	switch strings.ToUpper(s) {
-	case "DEBUG": return zapcore.DebugLevel
-	case "INFO": return zapcore.InfoLevel
-	case "WARN": return zapcore.WarnLevel
-	case "ERROR": return zapcore.ErrorLevel
-	case "FATAL": return zapcore.FatalLevel
-	default: return zapcore.DebugLevel - 1
+	case "DEBUG":
+		return debugLevel
+	case "INFO":
+		return infoLevel
+	case "WARN":
+		return warnLevel
+	case "ERROR":
+		return errorLevel
+	case "FATAL":
+		return fatalLevel
+	default:
+		return infoLevel
 	}
 }
 
@@ -55,8 +91,7 @@ func isPathExist(fileName string) bool {
 	return os.IsExist(err)
 }
 
-
-func newWriteSync(filePath string) (zapcore.WriteSyncer, error) {
+func OpenOrCreateFile(filePath string) (*os.File, error) {
 	now := time.Now()
 	fileName := fmt.Sprintf("%s/%d-%02d-%02d.log",
 		filePath,
@@ -74,97 +109,96 @@ func newWriteSync(filePath string) (zapcore.WriteSyncer, error) {
 		f, err = os.Create(fileName)
 	}
 
-	return zapcore.AddSync(f), err
-}
-
-func newEncoder() zapcore.Encoder {
-	encoderConfig := zap.NewProductionEncoderConfig()
-	encoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05")
-	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
-	return zapcore.NewConsoleEncoder(encoderConfig)
-}
-
-func NewZapLogger(filePath string, fileLevel zapcore.Level, consoleLevel zapcore.Level, stackTraceLevel zapcore.Level) *zap.Logger {
-	writeSync, err := newWriteSync(filePath)
-	if err != nil {
-		fmt.Println(err)
-		return nil
-	}
-
-	fileCore := zapcore.NewCore(newEncoder(), writeSync, fileLevel)
-
-	var logger *zap.Logger
-	if consoleLevel >= zapcore.DebugLevel {
-		consoleCore := zapcore.NewCore(newEncoder(), os.Stdout, consoleLevel)
-		logger = zap.New(zapcore.NewTee(fileCore, consoleCore), zap.AddCaller(), zap.AddStacktrace(stackTraceLevel))
-
-	} else {
-		logger = zap.New(fileCore, zap.AddCaller(), zap.AddStacktrace(stackTraceLevel))
-	}
-
-	return logger
+	return f, err
 }
 
 func (this *Logger) Close() {
-	this.baseLogger.Sync()
-	this.baseSugar = nil
-	this.baseLogger = nil
-}
 
-func (this *Logger) Reset() {
-	this.baseLogger = NewZapLogger(this.filePath, this.fileLevel, this.consoleLevel, this.stackTraceLevel)
-	this.baseSugar = this.baseLogger.Sugar()
-	this.logTime = time.Now()
 }
 
 func (this *Logger) checkTime() {
-	if this.logTime.Day() != time.Now().Day() {
-		this.baseLogger.Sync()
-		this.Reset()
+	now := time.Now()
+	if this.logTime.Day() != now.Day() {
+		file, err := OpenOrCreateFile(this.filePath)
+		if err == nil {
+			this.file.Close()
+			this.fileLogger = log.New(file, "", this.flag)
+			this.file = file
+			this.logTime = now
+		} else {
+			// log error and use old file
+			this.Error("create file error: ", err)
+		}
+
 	}
 }
 
-func (this *Logger) Debug(template string, args ...interface{}) {
+func (this *Logger) doPrint(level int, levelString string, format string, args ...interface{}) {
+	if level < this.level {
+		return
+	}
+
+	format = levelString +  format
 	this.checkTime()
-	this.baseSugar.Debugf(template, args...)
+	if level >= errorLevel {
+		format = fmt.Sprintf(format, args...)
+		format = format + "\r\n" + utils.TakeStacktrace(3)
+
+	} else {
+		format = fmt.Sprintf(format, args...)
+	}
+
+	this.fileLogger.Output(3, format)
+	if this.stdLogger != nil {
+		this.stdLogger.Output(3, format)
+	}
+
+	if level == fatalLevel {
+		os.Exit(1)
+	}
 }
 
-func (this *Logger) Info(template string, args ...interface{}) {
+func (this *Logger) Debug(format string, args ...interface{}) {
 	this.checkTime()
-	this.baseSugar.Infof(template, args...)
+	this.doPrint(debugLevel, debugLevelString, "", args...)
 }
 
-func (this *Logger) Warn(template string, args ...interface{}) {
+func (this *Logger) Info(format string, args ...interface{}) {
 	this.checkTime()
-	this.baseSugar.Warnf(template, args...)
+	this.doPrint(infoLevel, infoLevelString, format, args...)
 }
 
-func (this *Logger) Error(template string, args ...interface{}) {
+func (this *Logger) Warn(format string, args ...interface{}) {
 	this.checkTime()
-	this.baseSugar.Errorf(template, args...)
+	this.doPrint(warnLevel, warnLevelString, format, args...)
 }
 
-func (this *Logger) Fatal(template string, args ...interface{}) {
+func (this *Logger) Error(format string, args ...interface{}) {
 	this.checkTime()
-	this.baseSugar.Fatalf(template, args...)
+	this.doPrint(errorLevel, errorLevelString, format, args...)
 }
 
-func Debug(template string, args ...interface{}) {
-	gLogger.Debug(template, args...)
+func (this *Logger) Fatal(format string, args ...interface{}) {
+	this.checkTime()
+	this.doPrint(fatalLevel, fatalLevelString, format, args...)
 }
 
-func Info(template string, args ...interface{}) {
-	gLogger.Info(template, args...)
+func Debug(format string, args ...interface{}) {
+	gLogger.Debug(format, args...)
 }
 
-func Warn(template string, args ...interface{}) {
-	gLogger.Warn(template, args...)
+func Info(format string, args ...interface{}) {
+	gLogger.Info(format, args...)
 }
 
-func Error(template string, args ...interface{}) {
-	gLogger.Error(template, args...)
+func Warn(format string, args ...interface{}) {
+	gLogger.Warn(format, args...)
 }
 
-func Fatal(template string, args ...interface{}) {
-	gLogger.Fatal(template, args...)
+func Error(format string, args ...interface{}) {
+	gLogger.Error(format, args...)
+}
+
+func Fatal(format string, args ...interface{}) {
+	gLogger.Fatal(format, args...)
 }
