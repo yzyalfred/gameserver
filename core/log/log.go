@@ -113,7 +113,7 @@ func OpenOrCreateFile(filePath string) (*os.File, error) {
 }
 
 func (this *Logger) Close() {
-
+	this.file.Close()
 }
 
 func (this *Logger) checkTime() {
@@ -125,9 +125,10 @@ func (this *Logger) checkTime() {
 			this.fileLogger = log.New(file, "", this.flag)
 			this.file = file
 			this.logTime = now
+
 		} else {
 			// log error and use old file
-			this.Error("create file error: ", err)
+			this._doPrint(debugLevel, debugLevelString, "create file error: "+err.Error())
 		}
 
 	}
@@ -138,8 +139,17 @@ func (this *Logger) doPrint(level int, levelString string, format string, args .
 		return
 	}
 
-	format = levelString +  format
 	this.checkTime()
+	this._doPrint(level, levelString, format, args...)
+
+	if level == fatalLevel {
+		os.Exit(1)
+	}
+}
+
+func (this *Logger) _doPrint(level int, levelString string, format string, args ...interface{}) {
+	// format and add prefix
+	format = levelString + format
 	if level >= errorLevel {
 		format = fmt.Sprintf(format, args...)
 		format = format + "\r\n" + utils.TakeStacktrace(3)
@@ -152,34 +162,25 @@ func (this *Logger) doPrint(level int, levelString string, format string, args .
 	if this.stdLogger != nil {
 		this.stdLogger.Output(3, format)
 	}
-
-	if level == fatalLevel {
-		os.Exit(1)
-	}
 }
 
 func (this *Logger) Debug(format string, args ...interface{}) {
-	this.checkTime()
 	this.doPrint(debugLevel, debugLevelString, "", args...)
 }
 
 func (this *Logger) Info(format string, args ...interface{}) {
-	this.checkTime()
 	this.doPrint(infoLevel, infoLevelString, format, args...)
 }
 
 func (this *Logger) Warn(format string, args ...interface{}) {
-	this.checkTime()
 	this.doPrint(warnLevel, warnLevelString, format, args...)
 }
 
 func (this *Logger) Error(format string, args ...interface{}) {
-	this.checkTime()
 	this.doPrint(errorLevel, errorLevelString, format, args...)
 }
 
 func (this *Logger) Fatal(format string, args ...interface{}) {
-	this.checkTime()
 	this.doPrint(fatalLevel, fatalLevelString, format, args...)
 }
 
