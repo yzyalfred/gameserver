@@ -1,25 +1,28 @@
 package main
 
 import (
-	"gameserver/core/log"
+	"fmt"
+	"runtime"
+	"sync"
 )
 
-func test1() {
-	test2()
-}
-
-
-func test2() {
-	test3()
-}
-
-func test3() {
-	log.Error("test mul error for log")
+var sp = sync.Pool{
+	New: func() interface{} {
+		return make([]byte, 16)
+	},
 }
 
 func main()  {
-	log.InitLog("../log", "info", true, 0)
-	log.Info("test info for log")
-	log.Error("test error for log")
-	test3()
+	buf := sp.Get().([]byte)
+	buf[0] = 1
+
+	runtime.GC()
+	runtime.GC()
+
+	sp.Put(buf)
+	buf2 := sp.Get().([]byte)
+	buf2[1] = 2
+
+	fmt.Println(buf)
+	fmt.Println(buf2)
 }
