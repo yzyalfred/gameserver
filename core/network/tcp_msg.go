@@ -1,8 +1,8 @@
 package network
 
 import (
-	"encoding/binary"
 	"errors"
+	"gameserver/common/utils"
 	"io"
 	"math"
 )
@@ -77,17 +77,9 @@ func (this *MsgParser) Read(conn *TCPConn) ([]byte, error) {
 	case 1:
 		msgLen = uint32(bufMsgLen[0])
 	case 2:
-		if this.littleEndian {
-			msgLen = uint32(binary.LittleEndian.Uint16(bufMsgLen))
-		} else {
-			msgLen = uint32(binary.BigEndian.Uint16(bufMsgLen))
-		}
+		msgLen = uint32(utils.ByteToUint16(bufMsgLen, this.littleEndian))
 	case 4:
-		if this.littleEndian {
-			msgLen = binary.LittleEndian.Uint32(bufMsgLen)
-		} else {
-			msgLen = binary.BigEndian.Uint32(bufMsgLen)
-		}
+		msgLen = uint32(utils.ByteToUint32(bufMsgLen, this.littleEndian))
 	}
 
 	// check len
@@ -127,17 +119,9 @@ func (this *MsgParser) Write(conn *TCPConn, args ...[]byte) error {
 	case 1:
 		msg[0] = byte(msgLen)
 	case 2:
-		if this.littleEndian {
-			binary.LittleEndian.PutUint16(msg, uint16(msgLen))
-		} else {
-			binary.BigEndian.PutUint16(msg, uint16(msgLen))
-		}
+		utils.PutUint16ToByte(msg, uint16(msgLen), this.littleEndian)
 	case 4:
-		if this.littleEndian {
-			binary.LittleEndian.PutUint32(msg, msgLen)
-		} else {
-			binary.BigEndian.PutUint32(msg, msgLen)
-		}
+		utils.PutUint32ToByte(msg, uint32(msgLen), this.littleEndian)
 	}
 
 	// write data
