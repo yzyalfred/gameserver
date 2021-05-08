@@ -2,9 +2,9 @@ package utils
 
 import "encoding/binary"
 
-// -------------------------------
+//********************************************************
 // byte to uint
-// -------------------------------
+//********************************************************
 
 func ByteToUint16(buf []byte, littleEndian bool) uint16 {
 	if littleEndian {
@@ -31,9 +31,9 @@ func ByteToUint64(buf []byte, littleEndian bool) uint64 {
 }
 
 
-// -------------------------------
+//********************************************************
 // put uint to byte
-// -------------------------------
+//********************************************************
 
 func PutUint16ToByte(buf []byte, value uint16, littleEndian bool) {
 	if littleEndian {

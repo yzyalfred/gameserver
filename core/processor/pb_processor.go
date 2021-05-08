@@ -17,14 +17,14 @@ type MessageInfo struct {
 type MessageHandler func(clientId uint64, msg proto.Message)
 
 type PBProcessor struct {
-	msgInfoList map[uint16]*MessageInfo
+	msgInfoList map[uint32]*MessageInfo
 
 	littleEndian bool
 }
 
 func NewPBProcessor() *PBProcessor {
 	return &PBProcessor{
-		msgInfoList:  make(map[uint16]*MessageInfo),
+		msgInfoList:  make(map[uint32]*MessageInfo),
 		littleEndian: true,
 	}
 }
@@ -34,14 +34,14 @@ func (this *PBProcessor) SetByteOrder(littleEndian bool) {
 }
 
 func (this *PBProcessor) Route(clientId uint64, msgData []byte) {
-	msgId := utils.ByteToUint16(msgData, this.littleEndian)
+	msgId := utils.ByteToUint32(msgData, this.littleEndian)
 	msgInfo, ok := this.msgInfoList[msgId]
 	if !ok {
 		log.Warn("msgId not found: ", msgId)
 		return
 	}
 
-	msg, err := this.Unmarshal(msgId, msgData)
+	msg, err := this.Unmarshal(msgId, msgData[utils2.MSG_ID_LEN:])
 	if err != nil {
 		return
 	}
@@ -49,7 +49,7 @@ func (this *PBProcessor) Route(clientId uint64, msgData []byte) {
 	msgInfo.msgHandler(clientId, msg)
 }
 
-func (this *PBProcessor) Unmarshal(msgId uint16, msgData []byte) (proto.Message, error) {
+func (this *PBProcessor) Unmarshal(msgId uint32, msgData []byte) (proto.Message, error) {
 	msgInfo, ok := this.msgInfoList[msgId]
 	if !ok {
 		log.Warn("msgId not found: ", msgId)
@@ -58,7 +58,7 @@ func (this *PBProcessor) Unmarshal(msgId uint16, msgData []byte) (proto.Message,
 
 	msgValue := reflect.New(msgInfo.msgType.Elem()).Interface()
 	msg := msgValue.(proto.Message)
-	err := proto.Unmarshal(msgData[2:], msg)
+	err := proto.Unmarshal(msgData, msg)
 	if err != nil {
 		log.Warn("unmarshall error, msgId: ", msgId, "data: ", msgData)
 		return nil, err
@@ -68,35 +68,35 @@ func (this *PBProcessor) Unmarshal(msgId uint16, msgData []byte) (proto.Message,
 }
 
 // add head: msgId
-func (this *PBProcessor) Marshal(msgId uint16, msg proto.Message) ([]byte, error) {
+func (this *PBProcessor) Marshal(msgId uint32, msg proto.Message) ([]byte, error) {
 	msgData, err := proto.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}
 
 	buf := make([]byte, len(msgData)+utils2.MSG_ID_LEN)
-	utils.PutUint16ToByte(buf, msgId, this.littleEndian)
+	utils.PutUint32ToByte(buf, msgId, this.littleEndian)
 	copy(buf[:utils2.MSG_ID_LEN], msgData)
 
 	return buf, nil
 }
 
 // add head: clientId + msgId
-func (this *PBProcessor) MarshalServerMsg(msgId uint16, clientId uint32, msg proto.Message) ([]byte, error) {
+func (this *PBProcessor) MarshalServerMsg(msgId uint32, clientId uint64, msg proto.Message) ([]byte, error) {
 	msgData, err := proto.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}
 
 	buf := make([]byte, len(msgData)+utils2.SERVER_MSG_HEAD_LEN)
-	utils.PutUint32ToByte(buf, clientId, this.littleEndian)
-	utils.PutUint16ToByte(buf[utils2.CLIENT_ID_LEN:], msgId, this.littleEndian)
+	utils.PutUint64ToByte(buf, clientId, this.littleEndian)
+	utils.PutUint32ToByte(buf[utils2.CLIENT_ID_LEN:], msgId, this.littleEndian)
 	copy(buf[:utils2.SERVER_MSG_HEAD_LEN], msgData)
 
 	return buf, nil
 }
 
-func (this *PBProcessor) Register(msgId uint16, msg proto.Message, msgHandler MessageHandler) {
+func (this *PBProcessor) Register(msgId uint32, msg proto.Message, msgHandler MessageHandler) {
 	reflectType := reflect.TypeOf(msg)
 	this.msgInfoList[msgId] = &MessageInfo{
 		msgType:    reflectType,
